@@ -24,7 +24,8 @@ Ok, one module loaded.
 λ address :: Address = ["Dickens", "England"]
 λ billingInfo :: BillingInfo = CreditCard cardNumber cardHolder address 
 λ show billingInfo 
-"CreditCard \"134245751234513465\" \"Thomas Gradgrind\" [\"Dickens\",\"E
+"CreditCard \"134245751234513465\" \"Thomas Gradgrind\"
+[\"Dickens\",\"England\"]"
 ```
 
 ## Linting
