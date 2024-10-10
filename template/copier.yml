@@ -1,0 +1,21 @@
+_subdirectory: template
+
+directoryName:
+    type: str
+    help: What is the directory name of the new project? (Use [0-9]{4})
+
+fileName:
+    type: str
+    help: What is the name of the file? (Use kebabcase)
+
+moduleName:
+    type: str
+    help: Computed property
+    default: "{{ fileName.split('.hs')[0].split('-') | map('capitalize') | join }}"
+    when: false
+
+functionName:
+    type: str
+    help: Computed property
+    default: "{{ moduleName[0] | lower + moduleName[1:] }}"
+    when: false

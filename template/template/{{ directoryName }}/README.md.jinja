@@ -1,0 +1,21 @@
+# `{{ directoryName }}`
+
+## Interactive
+
+```console
+$ ghci
+```
+```haskell
+GHCi, version 9.4.8: https://www.haskell.org/ghc/  :? for help
+λ :load {{ fileName }}
+[1 of 1] Compiling {{ moduleName }}             ( {{ fileName }}, interpreted )
+Ok, one module loaded.
+λ {{ functionName }}
+"Called function {{ functionName }}"
+```
+
+## Linting
+
+```console
+hlint {{ fileName }}
+```
