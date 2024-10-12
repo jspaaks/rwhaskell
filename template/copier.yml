@@ -2,7 +2,7 @@ _subdirectory: template
 
 directoryName:
     type: str
-    help: What is the directory name of the new project? (Use [0-9]{4})
+    help: What is the directory name of the new project? (Use [0-9]{5})
 
 fileName:
     type: str
