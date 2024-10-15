@@ -75,26 +75,21 @@ module GrahamScan where
 
     -- retain only the furthest point on each ray
     furthest :: [Triplet] -> [Triplet]
-    furthest triplets = map last $ map sortByDistance $ groupByAngle triplets where
+    furthest = map last . map sortByDistance . groupByAngle . sortByAngle where
 
         -- sort the triplets by distance
         sortByDistance :: [Triplet] -> [Triplet]
         sortByDistance = sortBy f where
-
-            f :: Triplet -> Triplet -> Ordering
-            f a b = compare (distance a) (distance b)
+            f = \a b -> compare (distance a) (distance b)
 
         -- group a list of triplets by angle
         groupByAngle :: [Triplet] -> [[Triplet]]
-        groupByAngle = (groupBy g) . sortByAngle where
+        groupByAngle = groupBy f where
+            f = \a b -> angle a == angle b
 
-            g = (\a b -> angle a == angle b)
-
-            sortByAngle :: [Triplet] -> [Triplet]
-            sortByAngle = sortBy f where
-
-                f :: Triplet -> Triplet -> Ordering
-                f a b = compare (angle a) (angle b)
+        sortByAngle :: [Triplet] -> [Triplet]
+        sortByAngle = sortBy f where
+            f = \a b -> compare (angle a) (angle b)
 
 
     -- print the list of triplets
