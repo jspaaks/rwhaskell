@@ -46,32 +46,20 @@ module GrahamScan where
     distance (Triplet _ _ d) = d
 
     -- append properties needed for scan algorithm to each point
-    appendProps :: [Ctn] -> (Ctn, [Triplet])
-    appendProps xs = (ctn0, triplets) where
+    appendProps :: Ctn -> [Ctn] -> [Triplet]
+    appendProps ctn0 = triplets where
+        triplets = map g . filter f where
+            f = \ctn -> ctn /= ctn0
+            g = \ctn -> Triplet ctn (calcangle ctn ctn0) (calcdistsq ctn ctn0) where
 
-        ctn0 = startFrom xs
+                calcangle :: Ctn -> Ctn -> Angle
+                calcangle (Ctn x y) (Ctn x0 y0) = degrees $ atan $ (y - y0) / (x - x0)
 
-        triplets = [ Triplet ctn (calcangle ctn ctn0) (calcdistsq ctn ctn0) | ctn <- xs, ctn /= ctn0 ]
+                calcdistsq :: Ctn -> Ctn -> Distance
+                calcdistsq (Ctn x y) (Ctn x0 y0) = (x - x0)^2 + (y - y0)^2
 
-        calcangle :: Ctn -> Ctn -> Angle
-        calcangle (Ctn x y) (Ctn x0 y0) = degrees $ atan $ (y - y0) / (x - x0)
-
-        calcdistsq :: Ctn -> Ctn -> Distance
-        calcdistsq (Ctn x y) (Ctn x0 y0) = (x - x0)^2 + (y - y0)^2
-
-        startFrom :: [Ctn] -> Ctn
-        startFrom xs = head $ sortBy f xs where
-
-            f :: Ctn -> Ctn -> Ordering
-            f (Ctn xa ya) (Ctn xb yb)
-                | ya < yb             = LT
-                | ya == yb && xa < xb = LT
-                | ya > yb             = GT
-                | ya == yb && xa > xb = GT
-                | otherwise           = EQ
-
-        degrees :: Double -> Angle
-        degrees = (*) (360 / 2 / pi)
+                degrees :: Double -> Angle
+                degrees = (*) (360 / 2 / pi)
 
     -- retain only the furthest point on each ray
     furthest :: [Triplet] -> [Triplet]
@@ -94,7 +82,8 @@ module GrahamScan where
 
     -- print the list of triplets
     myprint :: [Triplet] -> IO ()
-    myprint triplets = putStr $ "[\n" <> unlines [", " <> (show t) | t <- triplets] <> "]\n"
+    myprint triplets = putStr $ "[\n" <> f triplets <> "]\n" where
+        f = unlines . map ((<>) ", ") . map show
 
 
     firstturn :: [Ctn] -> Turn
@@ -111,10 +100,23 @@ module GrahamScan where
                          (Ctn xc yc) =
                          (xb - xa) * (yc - ya) - (yb - ya) * (xc - xa)
 
+    startFrom :: [Ctn] -> Ctn
+    startFrom = head . sortBy f where
+
+        f :: Ctn -> Ctn -> Ordering
+        f (Ctn xa ya) (Ctn xb yb)
+            | ya < yb             = LT
+            | ya == yb && xa < xb = LT
+            | ya > yb             = GT
+            | ya == yb && xa > xb = GT
+            | otherwise           = EQ
+
 
     hull :: [Ctn] -> [Ctn]
-    hull ctns = helper (f points) [] where
-        f = removeProps . furthest . snd . appendProps
-        removeProps = map (\(Triplet ctn _ _) -> ctn)
+    hull ctns = helper ctns' [] where
         helper retaineds ignoreds = undefined
+        ctns' = ctn0 : (f ctns)
+        ctn0 = startFrom ctns
+        f = removeProps . furthest . appendProps ctn0
+        removeProps = map (\(Triplet ctn _ _) -> ctn)
 
