@@ -1,7 +1,7 @@
 module GrahamScan where
 
     import Prelude hiding (Left, Right)
-    import Data.List (sortBy, groupBy)
+    import Data.List (sortBy, groupBy, nub)
 
     -- Cartesian coordinates x y
     data Ctn = Ctn Double Double
@@ -16,154 +16,108 @@ module GrahamScan where
               | None
                 deriving (Show, Eq)
 
-    data Stack = Stack [Ctn] deriving (Show)
-
     type Angle = Double
     type Distance = Double
 
 
-    -- append properties needed for scan algorithm to each point
-    appendProps :: Ctn -> [Ctn] -> [Triplet]
-    appendProps ctn0 = triplets where
-        triplets = map g . filter f where
-            f = \ctn -> ctn /= ctn0
-            g = \ctn -> Triplet ctn (calcangle ctn ctn0) (calcdistsq ctn ctn0) where
-
-                calcangle :: Ctn -> Ctn -> Angle
-                calcangle (Ctn x y) (Ctn x0 y0) = degrees $ atan $ (y - y0) / (x - x0)
-
-                calcdistsq :: Ctn -> Ctn -> Distance
-                calcdistsq (Ctn x y) (Ctn x0 y0) = (x - x0)^2 + (y - y0)^2
-
-                degrees :: Double -> Angle
-                degrees = (*) (360 / 2 / pi)
-
-
-    direction :: Ctn -> Ctn -> Ctn -> Turn
-    direction a b c
-        | crossproduct a b c == 0 = None
-        | crossproduct a b c > 0  = Left
-        | crossproduct a b c < 0  = Right
-        where
-            crossproduct (Ctn xa ya)
-                         (Ctn xb yb)
-                         (Ctn xc yc) =
-                         (xb - xa) * (yc - ya) - (yb - ya) * (xc - xa)
-
-
     directions :: [Ctn] -> [Turn]
     directions xs = [ direction a b c | (a,b,c) <- zip3 as bs cs ] where
+
+        direction :: Ctn -> Ctn -> Ctn -> Turn
+        direction a b c
+            | crossproduct a b c == 0 = None
+            | crossproduct a b c > 0  = Left
+            | crossproduct a b c < 0  = Right
+            where
+                crossproduct (Ctn xa ya)
+                             (Ctn xb yb)
+                             (Ctn xc yc) =
+                             (xb - xa) * (yc - ya) - (yb - ya) * (xc - xa)
         as = xs
         bs = drop 1 $ xs
         cs = drop 2 $ xs
 
 
-    -- retain only the furthest point on each ray
-    furthest :: [Triplet] -> [Triplet]
-    furthest = map last . map sortByDistance . groupByAngle . sortByAngle where
+    hull xs = wrap $ f $ sorted $ nub xs where
 
-        -- sort the triplets by distance
-        sortByDistance :: [Triplet] -> [Triplet]
-        sortByDistance = sortBy f where
-            f = \a b -> compare (distance a) (distance b) where
+        f :: [Ctn] -> [Ctn]
+        f retained
+            | all (== Left) $ directions $ wrap retained = retained
+            | otherwise                                  = f retained'
+                where
+                    retained' = snd $ unzip (pre <> drop 1 suf)
+                    (pre, suf) = break (\(d,_) -> d /= Left) (zip ds retained)
+                    ds = directions $ wrap retained
 
-        -- group a list of triplets by angle
-        groupByAngle :: [Triplet] -> [[Triplet]]
-        groupByAngle = groupBy f where
-            f = \a b -> angle a == angle b
-
-        -- sort a list of triplets by angle
-        sortByAngle :: [Triplet] -> [Triplet]
-        sortByAngle = sortBy f where
-            f = \a b -> compare (angle a) (angle b)
-
-        -- getter for angle from Triplet
-        angle :: Triplet -> Angle
-        angle (Triplet _ a _) = a
-
-        -- getter for distance from Triplet
-        distance :: Triplet -> Distance
-        distance (Triplet _ _ d) = d
-
-    null :: [Ctn] -> [Ctn]
-    hull = undefined -- function defined below doesnt quite work
-
-    -- hull :: [Ctn] -> [Ctn]
-    -- hull candidates = unstack $ helper candidates (Stack []) where
-    --     helper candidates' (Stack xs)
-    --         | null candidates'        = Stack []
-    --         | length xs <= 2          = push c $ helper (tail candidates') (Stack xs)
-    --         | direction a b c == Left = push c $ helper (tail candidates') (Stack xs)
-    --         | otherwise               = pop $ helper candidates' (Stack xs)
-    --         where
-    --             a = last $ init xs
-    --             b = last xs
-    --             c = head candidates'
-
-
-    pop :: Stack -> Stack
-    pop (Stack []) = Stack []
-    pop (Stack ctns) = Stack (init ctns)
-
-
-    -- print a list of cartesian coodinates
-    printCtns :: [Ctn] -> IO ()
-    printCtns ctns = putStr $ "[\n" <> f ctns <> "]\n" where
-        f = unlines . map ((<>) ", ") . map show
-
-
-    -- print a list of triplets
-    printTriplets :: [Triplet] -> IO ()
-    printTriplets triplets = putStr $ "[\n" <> f triplets <> "]\n" where
-        f = unlines . map ((<>) ", ") . map show
-
-
-    push :: Ctn -> Stack -> Stack
-    push ctn (Stack ctns) = Stack (ctns <> [ctn])
+        wrap xs = [ctn0] <> xs <> [ctn0]
+        ctn0 = pivot $ nub $ xs
 
 
     -- given an unsorted list of cartesian coordinates, sorts the list by increasing
     -- angle relative to the reference point ctn0, discarding points that are
     -- shadowed by other points on the same ray that are further away from the
-    -- reference point ctn0
+    -- reference point ctn0. Note the reference point itself is also discarded.
     sorted :: [Ctn] -> [Ctn]
-    sorted = \ctns -> ctn0 : f ctns where
+    sorted ctns = removeProps $ furthest $ appendProps ctn0 ctns where
 
-        ctn0 = startFrom ctns
+        -- append properties needed for scan algorithm to each point
+        appendProps :: Ctn -> [Ctn] -> [Triplet]
+        appendProps ctn0 = triplets where
+            triplets = map g . filter f where
+                f = \ctn -> ctn /= ctn0
+                g = \ctn -> Triplet ctn (calcangle ctn ctn0) (calcdistsq ctn ctn0) where
 
-        f = removeProps . furthest . appendProps ctn0 where
-            removeProps = map (\(Triplet ctn _ _) -> ctn)
-        
-        startFrom :: [Ctn] -> Ctn
-        startFrom = head . sortBy f where
+                    calcangle :: Ctn -> Ctn -> Angle
+                    calcangle (Ctn x y) (Ctn x0 y0) = degrees $ atan $ (y - y0) / (x - x0)
 
-            f :: Ctn -> Ctn -> Ordering
-            f (Ctn xa ya) (Ctn xb yb)
-                | ya < yb             = LT
-                | ya == yb && xa < xb = LT
-                | ya > yb             = GT
-                | ya == yb && xa > xb = GT
-                | otherwise           = EQ
+                    calcdistsq :: Ctn -> Ctn -> Distance
+                    calcdistsq (Ctn x y) (Ctn x0 y0) = (x - x0)^2 + (y - y0)^2
 
-    unstack :: Stack -> [Ctn]
-    unstack (Stack ctns) = ctns
+                    degrees :: Double -> Angle
+                    degrees = (*) (360 / 2 / pi)
+
+        -- deternmine the leftmost of the points of minimal y
+        ctn0 = pivot ctns
+
+        -- retain only the furthest point on each ray
+        furthest :: [Triplet] -> [Triplet]
+        furthest = map last . map sortByDistance . groupByAngle . sortByAngle where
+
+            -- sort the triplets by distance
+            sortByDistance :: [Triplet] -> [Triplet]
+            sortByDistance = sortBy f where
+                f = \a b -> compare (distance a) (distance b) where
+
+            -- group a list of triplets by angle
+            groupByAngle :: [Triplet] -> [[Triplet]]
+            groupByAngle = groupBy f where
+                f = \a b -> angle a == angle b
+
+            -- sort a list of triplets by angle
+            sortByAngle :: [Triplet] -> [Triplet]
+            sortByAngle = sortBy f where
+                f = \a b -> compare (angle a) (angle b)
+
+            -- getter for angle from Triplet
+            angle :: Triplet -> Angle
+            angle (Triplet _ a _) = a
+
+            -- getter for distance from Triplet
+            distance :: Triplet -> Distance
+            distance (Triplet _ _ d) = d
+
+        -- remove properties that were needed for scan algorithm from each point
+        removeProps = map (\(Triplet ctn _ _) -> ctn)
 
 
-    -- test data
-    ctns =
-        [ Ctn 0 0
-        , Ctn 1 0
-        , Ctn 1 1
-        , Ctn 0 1
-        , Ctn (-0.5) (-0.5)
-        , Ctn   0.5  (-0.5)
-        , Ctn   1.5  (-0.5)
-        , Ctn (-0.5)   0.5
-        , Ctn   0.5    0.5
-        , Ctn   1.5    0.5
-        , Ctn (-0.5)   1.5
-        , Ctn   0.5    1.5
-        , Ctn   1.5    1.5
-        ]
+    pivot :: [Ctn] -> Ctn
+    pivot = head . sortBy f where
 
-    [a,b,c,d,e,f,g,h] = sorted ctns
+        f :: Ctn -> Ctn -> Ordering
+        f (Ctn xa ya) (Ctn xb yb)
+            | ya < yb             = LT
+            | ya == yb && xa < xb = LT
+            | ya > yb             = GT
+            | ya == yb && xa > xb = GT
+            | otherwise           = EQ
+
