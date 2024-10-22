@@ -4,15 +4,16 @@ directoryName:
     type: str
     help: What is the directory name of the new project? (Use [0-9]{5})
 
-fileName:
-    type: str
-    help: What is the name of the file? (Use kebabcase)
-
 moduleName:
     type: str
-    help: Computed property
-    default: "{{ fileName.split('.hs')[0].split('-') | map('capitalize') | join }}"
-    when: false
+    help: What is the name of the module? (use upper camelcase)
+    default: "MyModule"
+
+fileName:
+    type: str
+    default: "{{ moduleName + '.hs' }}"
+    help: What is the name of the file? (Use upper camelcase)
+    when: False
 
 functionName:
     type: str
