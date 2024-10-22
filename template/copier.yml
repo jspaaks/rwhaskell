@@ -7,12 +7,12 @@ directoryName:
 moduleName:
     type: str
     help: What is the name of the module? (use upper camelcase)
-    default: "MyModule"
+    default: "Main"
 
 fileName:
     type: str
     default: "{{ moduleName + '.hs' }}"
-    help: What is the name of the file? (Use upper camelcase)
+    help: Computed property
     when: False
 
 functionName:
