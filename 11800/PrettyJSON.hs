@@ -5,10 +5,17 @@ module PrettyJSON
 
     import Numeric (showHex)
     import Data.Char (ord)
-    import Data.Bits ((.&.), shiftR)
+    import Data.Bits ( shiftR
+                     , (.&.)
+                     )
     import SimpleJSON (JValue(..))
-    import Prettify (Doc, doccat, char, double, fsep, hcat, punctuate, text,
-                    compact, pretty, string, series, empty, (</>))
+    import Prettify ( Doc
+                    , doccat
+                    , double
+                    , text
+                    , string
+                    , series
+                    )
 
     renderJValue :: JValue -> Doc
     renderJValue (JBool True)  = text "true"
