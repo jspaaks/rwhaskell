@@ -1,2 +1,4 @@
-module {{ moduleName }} ( functionName ) where
-    {{ functionName }} = "Called function {{ functionName }}"
+module {{ moduleName }} ({{ functionName }}) where
+
+    {{ functionName }} :: IO ()
+    {{ functionName }} = putStrLn "Called function {{ functionName }}"
